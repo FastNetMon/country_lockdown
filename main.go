@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/netip"
 
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
@@ -32,12 +33,21 @@ func main() {
 
 	log.Printf("GeoIP database has correct format")
 
-	load_all_ipv4_networks_for_country(geoip_country_maxmind_db, "CN")
+	// We use Tuvalu for testing as they have very small number of prefixes
+	country_prefix_list, err := load_all_ipv4_networks_for_country(geoip_country_maxmind_db, "TV")
+
+	if err != nil {
+		log.Fatalf("Cannot load prefixes for country: %v", err)
+	}
+
+	for _, prefix := range country_prefix_list {
+		log.Printf("%s\n", prefix.String())
+	}
 }
 
 // Loads all networks for country with specific ISO code
 // Luckily for us Hong Kong has HK code here and China has CN
-func load_all_ipv4_networks_for_country(geoip_country_maxmind_db *maxminddb.Reader, country_iso_code string) error {
+func load_all_ipv4_networks_for_country(geoip_country_maxmind_db *maxminddb.Reader, country_iso_code string) ([]netip.Prefix, error) {
 	// All fields https://github.com/oschwald/geoip2-golang/blob/main/reader.go#L139
 	record := geoip2.Country{}
 
@@ -50,13 +60,13 @@ func load_all_ipv4_networks_for_country(geoip_country_maxmind_db *maxminddb.Read
 	// SkipAliasedNetworks option.
 	networks := geoip_country_maxmind_db.Networks(maxminddb.SkipAliasedNetworks)
 
-	number_of_networks := 0
+	prefix_list := []netip.Prefix{}
 
 	for networks.Next() {
 		subnet, err := networks.Network(&record)
 
 		if err != nil {
-			return fmt.Errorf("Cannot decode field in dataset: %v", err)
+			return nil, fmt.Errorf("Cannot decode field in dataset: %v", err)
 		}
 
 		// Filter out IPv6 networks
@@ -75,15 +85,23 @@ func load_all_ipv4_networks_for_country(geoip_country_maxmind_db *maxminddb.Read
 			continue
 		}
 
-		// fmt.Printf("%s: %s\n", subnet.String(), record.Country.IsoCode)
-		number_of_networks++
+		// Parse it into fancy netip.Prefix
+		prefix, err := netip.ParsePrefix(subnet.String())
+
+		if err != nil {
+			log.Printf("Cannot parse %s as prefix with error %v", subnet.String(), err)
+			// Well, we accept some malformed prefixes and do not return error in this case
+			continue
+		}
+
+		prefix_list = append(prefix_list, prefix)
 	}
 
 	if networks.Err() != nil {
-		return fmt.Errorf("Cannot correctly iterate over all available networks %w", networks.Err())
+		return nil, fmt.Errorf("Cannot correctly iterate over all available networks %w", networks.Err())
 	}
 
-	log.Printf("Successfully loaded %d prefixes for country %s", number_of_networks, country_iso_code)
+	log.Printf("Successfully loaded %d prefixes for country %s", len(prefix_list), country_iso_code)
 
-	return nil
+	return prefix_list, nil
 }
