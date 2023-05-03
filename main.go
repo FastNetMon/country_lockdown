@@ -8,6 +8,7 @@ import (
 
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
+	"go4.org/netipx"
 )
 
 var country_geoip_path = flag.String("geoip_path", "/usr/share/GeoIP/GeoIP2-Country.mmdb", "Path to GeoIP2 MMDB country data file")
@@ -40,9 +41,21 @@ func main() {
 		log.Fatalf("Cannot load prefixes for country: %v", err)
 	}
 
+	// https://pkg.go.dev/go4.org/netipx#IPSetBuilder
+	var b netipx.IPSetBuilder
+
 	for _, prefix := range country_prefix_list {
 		log.Printf("%s\n", prefix.String())
+
+		b.AddPrefix(prefix)
 	}
+
+	// Exclude:
+	b.Remove(netip.MustParseAddr("202.2.96.2"))
+
+	s, _ := b.IPSet()
+	fmt.Println(s.Ranges())
+	fmt.Println(s.Prefixes())
 }
 
 // Loads all networks for country with specific ISO code
