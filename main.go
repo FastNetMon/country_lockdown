@@ -5,20 +5,17 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
 )
-
-var geoip_country_maxmind_db *maxminddb.Reader
 
 var country_geoip_path = flag.String("geoip_path", "/usr/share/GeoIP/GeoIP2-Country.mmdb", "Path to GeoIP2 MMDB country data file")
 
 func main() {
 	flag.Parse()
 
-	var err error
-
 	// GeoIP for countries
-	geoip_country_maxmind_db, err = maxminddb.Open(*country_geoip_path)
+	geoip_country_maxmind_db, err := maxminddb.Open(*country_geoip_path)
 
 	if err != nil {
 		log.Fatalf("Can't open country mapping file: %v", err)
@@ -35,16 +32,17 @@ func main() {
 
 	log.Printf("GeoIP database has correct format")
 
-	load_all_ipv4_networks()
+	load_all_ipv4_networks(geoip_country_maxmind_db)
 
 }
 
 // Loads all networks
-func load_all_ipv4_networks() error {
+func load_all_ipv4_networks(geoip_country_maxmind_db *maxminddb.Reader) error {
 
-	record := struct {
-		Domain string `maxminddb:"connection_type"`
-	}{}
+	record := geoip2.Country{}
+	//struct {
+	//	Domain string `maxminddb:"connection_type"`
+	//}{}
 
 	// We use SkipAliasedNetworks because it's recommended in official documentation:
 	// https://pkg.go.dev/github.com/oschwald/maxminddb-golang#SkipAliasedNetworks
@@ -68,7 +66,12 @@ func load_all_ipv4_networks() error {
 			continue
 		}
 
-		fmt.Printf("%s: %s\n", subnet.String(), record.Domain)
+		// We do not expect private ranges here but we have to be sure
+		// Well, I do not think that we have any functions to do so for prefixes
+		// Skip for now
+
+		// Luckily for us Hong Kong has HK code here and China has CN
+		fmt.Printf("%s: %s\n", subnet.String(), record.Country.IsoCode)
 	}
 
 	if networks.Err() != nil {
