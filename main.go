@@ -42,6 +42,7 @@ func main() {
 	}
 
 	// https://pkg.go.dev/go4.org/netipx#IPSetBuilder
+	// https://tailscale.com/blog/netaddr-new-ip-type-for-go/
 	var b netipx.IPSetBuilder
 
 	for _, prefix := range country_prefix_list {
