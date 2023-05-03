@@ -38,11 +38,8 @@ func main() {
 
 // Loads all networks
 func load_all_ipv4_networks(geoip_country_maxmind_db *maxminddb.Reader) error {
-
+	// All fields https://github.com/oschwald/geoip2-golang/blob/main/reader.go#L139
 	record := geoip2.Country{}
-	//struct {
-	//	Domain string `maxminddb:"connection_type"`
-	//}{}
 
 	// We use SkipAliasedNetworks because it's recommended in official documentation:
 	// https://pkg.go.dev/github.com/oschwald/maxminddb-golang#SkipAliasedNetworks
