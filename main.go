@@ -6,12 +6,18 @@ import (
 	"log"
 	"net/netip"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
 	"go4.org/netipx"
 )
 
 var country_geoip_path = flag.String("geoip_path", "/usr/share/GeoIP/GeoIP2-Country.mmdb", "Path to GeoIP2 MMDB country data file")
+
+// GoBGP host
+var gobgp_host string = "[::1]:50051"
 
 func main() {
 	flag.Parse()
@@ -57,6 +63,20 @@ func main() {
 	s, _ := b.IPSet()
 	fmt.Println(s.Ranges())
 	fmt.Println(s.Prefixes())
+
+	var opts []grpc.DialOption
+
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	conn, err := grpc.Dial(gobgp_host, opts...)
+
+	if err != nil {
+		log.Fatalf("Cannot connect to gRPC: %v", err)
+	}
+
+	log.Printf("Successfully connected to GoBGP")
+
+	defer conn.Close()
 }
 
 // Loads all networks for country with specific ISO code
