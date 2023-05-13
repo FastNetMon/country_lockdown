@@ -12,6 +12,9 @@ github.com/oschwald/geoip2-golang
 # github.com/oschwald/maxminddb-golang v1.10.0
 ## explicit; go 1.18
 github.com/oschwald/maxminddb-golang
+# github.com/osrg/gobgp/v3 v3.14.0
+## explicit; go 1.20
+github.com/osrg/gobgp/v3/api
 # go4.org/netipx v0.0.0-20230303233057-f1b76eb4bb35
 ## explicit; go 1.18
 go4.org/netipx
@@ -34,7 +37,7 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4
+# google.golang.org/genproto v0.0.0-20230320184635-7606e756e683
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.55.0
@@ -120,4 +123,5 @@ google.golang.org/protobuf/runtime/protoimpl
 google.golang.org/protobuf/types/descriptorpb
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
+google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/timestamppb

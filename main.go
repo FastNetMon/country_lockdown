@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -8,6 +9,10 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	apb "google.golang.org/protobuf/types/known/anypb"
+
+	apipb "github.com/osrg/gobgp/v3/api"
 
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
@@ -75,6 +80,43 @@ func main() {
 	}
 
 	log.Printf("Successfully connected to GoBGP")
+
+	gobgp_client := apipb.NewGobgpApiClient(conn)
+
+	nlri, _ := apb.New(&apipb.IPAddressPrefix{
+		Prefix:    "10.0.0.0",
+		PrefixLen: 24,
+	})
+
+	origin_attr, _ := apb.New(&apipb.OriginAttribute{
+		Origin: 0,
+	})
+
+	next_hop_attr, _ := apb.New(&apipb.NextHopAttribute{
+		NextHop: "10.0.0.1",
+	})
+
+	// GoBGP will show them as {Communities: 0:100, 0:200}
+	community_attribute, _ := apb.New(&apipb.CommunitiesAttribute{
+		Communities: []uint32{100, 200},
+	})
+
+	attrs := []*apb.Any{origin_attr, next_hop_attr, community_attribute}
+
+	add_path_request := &apipb.AddPathRequest{
+		Path: &apipb.Path{
+			Family: &apipb.Family{Afi: apipb.Family_AFI_IP, Safi: apipb.Family_SAFI_UNICAST},
+			Nlri:   nlri,
+			Pattrs: attrs,
+		}}
+
+	add_path_response, err := gobgp_client.AddPath(context.Background(), add_path_request)
+
+	if err != nil {
+		log.Fatalf("Cannot add path: %v", err)
+	}
+
+	log.Printf("Successful add path: %v", add_path_response)
 
 	defer conn.Close()
 }
