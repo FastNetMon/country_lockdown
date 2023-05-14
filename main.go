@@ -100,7 +100,9 @@ func main() {
 	for _, prefix := range prefixes_to_block {
 		log.Printf("Prepare to announce %s", prefix)
 
-		err = announce_prefix(gobgp_client, prefix, next_hop)
+		withdraw := false
+
+		err = announce_prefix(gobgp_client, prefix, next_hop, withdraw)
 
 		if err != nil {
 			log.Printf("Cannot announce prefix %s: %v", prefix, err)
@@ -112,7 +114,7 @@ func main() {
 }
 
 // Announce prefix
-func announce_prefix(gobgp_client apipb.GobgpApiClient, prefix netip.Prefix, next_hop netip.Addr) error {
+func announce_prefix(gobgp_client apipb.GobgpApiClient, prefix netip.Prefix, next_hop netip.Addr, withdraw bool) error {
 
 	nlri, err := apb.New(&apipb.IPAddressPrefix{
 		Prefix:    prefix.Addr().String(),
@@ -155,15 +157,16 @@ func announce_prefix(gobgp_client apipb.GobgpApiClient, prefix netip.Prefix, nex
 
 	add_path_request := &apipb.AddPathRequest{
 		Path: &apipb.Path{
-			Family: &apipb.Family{Afi: apipb.Family_AFI_IP, Safi: apipb.Family_SAFI_UNICAST},
-			Nlri:   nlri,
-			Pattrs: attrs,
+			Family:     &apipb.Family{Afi: apipb.Family_AFI_IP, Safi: apipb.Family_SAFI_UNICAST},
+			Nlri:       nlri,
+			Pattrs:     attrs,
+			IsWithdraw: withdraw,
 		}}
 
 	_, err = gobgp_client.AddPath(context.Background(), add_path_request)
 
 	if err != nil {
-		log.Fatalf("Cannot add path: %v", err)
+		return fmt.Errorf("Cannot add path: %w", err)
 	}
 
 	log.Printf("Successfully announced prefix")
