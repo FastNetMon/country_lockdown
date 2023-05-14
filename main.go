@@ -69,6 +69,8 @@ func main() {
 	fmt.Println(s.Ranges())
 	fmt.Println(s.Prefixes())
 
+	prefixes_to_block := s.Prefixes()
+
 	var opts []grpc.DialOption
 
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -79,27 +81,75 @@ func main() {
 		log.Fatalf("Cannot connect to gRPC: %v", err)
 	}
 
+	defer conn.Close()
+
 	log.Printf("Successfully connected to GoBGP")
 
 	gobgp_client := apipb.NewGobgpApiClient(conn)
 
-	nlri, _ := apb.New(&apipb.IPAddressPrefix{
-		Prefix:    "10.0.0.0",
-		PrefixLen: 24,
+	next_hop, err := netip.ParseAddr("10.0.0.1")
+
+	if err != nil {
+		log.Fatalf("Cannot parse next hop: %v", err)
+	}
+
+	if !next_hop.Is4() {
+		log.Printf("Next hop must be IPv4 address")
+	}
+
+	for _, prefix := range prefixes_to_block {
+		log.Printf("Prepare to announce %s", prefix)
+
+		err = announce_prefix(gobgp_client, prefix, next_hop)
+
+		if err != nil {
+			log.Printf("Cannot announce prefix %s: %v", prefix, err)
+			continue
+		}
+
+		log.Printf("Successfully announced %s", prefix)
+	}
+}
+
+// Announce prefix
+func announce_prefix(gobgp_client apipb.GobgpApiClient, prefix netip.Prefix, next_hop netip.Addr) error {
+
+	nlri, err := apb.New(&apipb.IPAddressPrefix{
+		Prefix:    prefix.Addr().String(),
+		PrefixLen: uint32(prefix.Bits()),
 	})
 
-	origin_attr, _ := apb.New(&apipb.OriginAttribute{
+	// To check that we announce correct thing
+	log.Printf("Announce %s/%d", prefix.Addr().String(), uint32(prefix.Bits()))
+
+	if err != nil {
+		return fmt.Errorf("Cannot create prefix message: %v", err)
+	}
+
+	origin_attr, err := apb.New(&apipb.OriginAttribute{
 		Origin: 0,
 	})
 
-	next_hop_attr, _ := apb.New(&apipb.NextHopAttribute{
-		NextHop: "10.0.0.1",
+	if err != nil {
+		return fmt.Errorf("Cannot create origin message: %v", err)
+	}
+
+	next_hop_attr, err := apb.New(&apipb.NextHopAttribute{
+		NextHop: next_hop.String(),
 	})
 
+	if err != nil {
+		return fmt.Errorf("Cannot create next hop message: %v", err)
+	}
+
 	// GoBGP will show them as {Communities: 0:100, 0:200}
-	community_attribute, _ := apb.New(&apipb.CommunitiesAttribute{
+	community_attribute, err := apb.New(&apipb.CommunitiesAttribute{
 		Communities: []uint32{100, 200},
 	})
+
+	if err != nil {
+		return fmt.Errorf("Cannot create community message: %v", err)
+	}
 
 	attrs := []*apb.Any{origin_attr, next_hop_attr, community_attribute}
 
@@ -110,15 +160,15 @@ func main() {
 			Pattrs: attrs,
 		}}
 
-	add_path_response, err := gobgp_client.AddPath(context.Background(), add_path_request)
+	_, err = gobgp_client.AddPath(context.Background(), add_path_request)
 
 	if err != nil {
 		log.Fatalf("Cannot add path: %v", err)
 	}
 
-	log.Printf("Successful add path: %v", add_path_response)
+	log.Printf("Successfully announced prefix")
 
-	defer conn.Close()
+	return nil
 }
 
 // Loads all networks for country with specific ISO code
