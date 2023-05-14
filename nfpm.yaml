@@ -1,0 +1,30 @@
+# nfpm example configuration file
+#
+# check https://nfpm.goreleaser.com/configuration for detailed usage
+#
+name: "country_lockdown"
+arch: "amd64"
+platform: "linux"
+version: "v1.0.0"
+section: "default"
+priority: "extra"
+replaces:
+- foobar
+provides:
+- country_lockdown
+maintainer: "FastNetMon Engineering <sales@fastnetmon.com>"
+description: "Country Lockdown is a tool to manage country wide block lists from GeoIP database"
+vendor: "FastNetMon LTD"
+homepage: "http://fastnetmon.com"
+license: "Commercial"
+changelog: "changelog.yaml"
+contents:
+- src: ./bin/country_lockdown
+  dst: /usr/bin/country_lockdown
+- src: ./bin/gobgp
+  dst: /usr/bin/gobgp
+- src: ./bin/gobgpd
+  dst: /usr/bin/gobgpd
+- src: ./country_lockdown.json
+  dst: /etc/country_lockdown.json
+  type: config
