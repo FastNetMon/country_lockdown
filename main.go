@@ -20,11 +20,9 @@ import (
 	"go4.org/netipx"
 )
 
-// GoBGP host
-var gobgp_host string = "[::1]:50051"
-
 type CountryLockdownConfiguration struct {
-	GeoIPPath string `json:"geoip_path"`
+	GeoIPPath       string `json:"geoip_path"`
+	GoBGPApiAddress string `json:"gobgp_api_host"`
 }
 
 var conf CountryLockdownConfiguration
@@ -42,6 +40,16 @@ func main() {
 
 	if err != nil {
 		log.Fatalf("Could not decode JSON configuration file %s: %v", conf_file_path, err)
+	}
+
+	// Unless specified in config use default value
+	if conf.GeoIPPath == "" {
+		conf.GeoIPPath = "/usr/share/GeoIP/GeoIP2-Country.mmdb"
+	}
+
+	// Unless specified in config use default value
+	if conf.GoBGPApiAddress == "" {
+		conf.GoBGPApiAddress = "[::1]:50051"
 	}
 
 	// GeoIP for countries
@@ -92,7 +100,7 @@ func main() {
 
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	conn, err := grpc.Dial(gobgp_host, opts...)
+	conn, err := grpc.Dial(conf.GoBGPApiAddress, opts...)
 
 	if err != nil {
 		log.Fatalf("Cannot connect to gRPC: %v", err)

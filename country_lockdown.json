@@ -1,3 +1,4 @@
 {
-"geoip_path": "/usr/share/GeoIP/GeoIP2-Country.mmdb"
+"geoip_path": "/usr/share/GeoIP/GeoIP2-Country.mmdb",
+"gobgp_api_host": "[::1]:50051"
 }
