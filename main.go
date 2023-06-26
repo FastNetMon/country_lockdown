@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"flag"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/netip"
 
@@ -19,16 +20,32 @@ import (
 	"go4.org/netipx"
 )
 
-var country_geoip_path = flag.String("geoip_path", "/usr/share/GeoIP/GeoIP2-Country.mmdb", "Path to GeoIP2 MMDB country data file")
-
 // GoBGP host
 var gobgp_host string = "[::1]:50051"
 
+type CountryLockdownConfiguration struct {
+	GeoIPPath string `json:"geoip_path"`
+}
+
+var conf CountryLockdownConfiguration
+
 func main() {
-	flag.Parse()
+	conf_file_path := "/etc/country_lockdown.json"
+
+	file_as_array, err := ioutil.ReadFile(conf_file_path)
+
+	if err != nil {
+		log.Fatalf("Could not read configuration file %s with error: %v", conf_file_path, err)
+	}
+
+	err = json.Unmarshal(file_as_array, &conf)
+
+	if err != nil {
+		log.Fatalf("Could not decode JSON configuration file %s: %v", conf_file_path, err)
+	}
 
 	// GeoIP for countries
-	geoip_country_maxmind_db, err := maxminddb.Open(*country_geoip_path)
+	geoip_country_maxmind_db, err := maxminddb.Open(conf.GeoIPPath)
 
 	if err != nil {
 		log.Fatalf("Can't open country mapping file: %v", err)
