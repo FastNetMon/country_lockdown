@@ -1,4 +1,6 @@
 {
 "geoip_path": "/usr/share/GeoIP/GeoIP2-Country.mmdb",
-"gobgp_api_host": "[::1]:50051"
+"gobgp_api_host": "127.0.0.1:50051",
+"country_block_list": [],
+"ip_allow_list": [ "202.2.96.2" ]
 }

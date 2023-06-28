@@ -21,8 +21,10 @@ import (
 )
 
 type CountryLockdownConfiguration struct {
-	GeoIPPath       string `json:"geoip_path"`
-	GoBGPApiAddress string `json:"gobgp_api_host"`
+	GeoIPPath        string   `json:"geoip_path"`
+	GoBGPApiAddress  string   `json:"gobgp_api_host"`
+	CountryBlockList []string `json:"country_block_list"`
+	IPAllowList      []string `json:"ip_allow_list"`
 }
 
 var conf CountryLockdownConfiguration
@@ -87,8 +89,20 @@ func main() {
 		b.AddPrefix(prefix)
 	}
 
+	log.Printf("We have %d entries in allow list", len(conf.IPAllowList))
+
 	// Exclude:
-	b.Remove(netip.MustParseAddr("202.2.96.2"))
+	for _, allow_ip := range conf.IPAllowList {
+		addr, err := netip.ParseAddr(allow_ip)
+
+		if err != nil {
+			log.Printf("Cannot parse IP address %s", allow_ip)
+			continue
+		}
+
+		// Exclude it from our ranges
+		b.Remove(addr)
+	}
 
 	s, _ := b.IPSet()
 	fmt.Println(s.Ranges())
