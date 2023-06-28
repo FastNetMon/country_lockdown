@@ -25,6 +25,7 @@ type CountryLockdownConfiguration struct {
 	GoBGPApiAddress  string   `json:"gobgp_api_host"`
 	CountryBlockList []string `json:"country_block_list"`
 	IPAllowList      []string `json:"ip_allow_list"`
+	BGPIPv4NextHop   string   `json:"bgp_ipv4_next_hop"`
 }
 
 var conf CountryLockdownConfiguration
@@ -71,6 +72,22 @@ func main() {
 	}
 
 	log.Printf("GeoIP database has correct format")
+
+	if conf.BGPIPv4NextHop == "" {
+		log.Fatal("BGP IPv4 next hop is empty")
+	}
+
+	next_hop, err := netip.ParseAddr(conf.BGPIPv4NextHop)
+
+	if err != nil {
+		log.Fatalf("Cannot parse BGP IPv4 next hop %s: %v", conf.BGPIPv4NextHop, err)
+	}
+
+	if !next_hop.Is4() {
+		log.Printf("Next hop must be IPv4 address")
+	}
+
+	log.Printf("Will use next hop: %s", next_hop)
 
 	// https://pkg.go.dev/go4.org/netipx#IPSetBuilder
 	// https://tailscale.com/blog/netaddr-new-ip-type-for-go/
@@ -142,16 +159,6 @@ func main() {
 	log.Printf("Successfully connected to GoBGP")
 
 	gobgp_client := apipb.NewGobgpApiClient(conn)
-
-	next_hop, err := netip.ParseAddr("10.0.0.1")
-
-	if err != nil {
-		log.Fatalf("Cannot parse next hop: %v", err)
-	}
-
-	if !next_hop.Is4() {
-		log.Printf("Next hop must be IPv4 address")
-	}
 
 	for _, prefix := range prefixes_to_block {
 		log.Printf("Prepare to announce %s", prefix)

@@ -1,6 +1,7 @@
 {
 "geoip_path": "/usr/share/GeoIP/GeoIP2-Country.mmdb",
 "gobgp_api_host": "127.0.0.1:50051",
+"bgp_ipv4_next_hop": "10.0.0.1",
 "country_block_list": [ "TV" ],
 "ip_allow_list": [ "202.2.96.2" ]
 }
