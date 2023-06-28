@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/netip"
@@ -178,6 +179,14 @@ func main() {
 
 		log.Printf("Successfully announced %s", prefix)
 	}
+
+	active_announces, err := get_all_annoucned_prefixes(gobgp_client)
+
+	if err != nil {
+		log.Fatalf("Cannot load announces: %s", err)
+	}
+
+	log.Printf("Active announces: %s", active_announces)
 }
 
 // Announce prefix
@@ -286,6 +295,44 @@ func announce_prefix(gobgp_client apipb.GobgpApiClient, prefix netip.Prefix, nex
 	log.Printf("Successfully announced prefix")
 
 	return nil
+}
+
+// Returns all active announces
+func get_all_annoucned_prefixes(gobgp_client apipb.GobgpApiClient) ([]string, error) {
+
+	ipv4_unicast := &apipb.Family{
+		Afi:  apipb.Family_AFI_IP,
+		Safi: apipb.Family_SAFI_UNICAST,
+	}
+
+	list_path_request := &apipb.ListPathRequest{
+		TableType: apipb.TableType_GLOBAL,
+		Family:    ipv4_unicast,
+	}
+
+	stream, err := gobgp_client.ListPath(context.Background(), list_path_request)
+
+	if err != nil {
+		return nil, fmt.Errorf("Cannot list path: %w", err)
+	}
+
+	announces := []string{}
+
+	for {
+		r, err := stream.Recv()
+
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, fmt.Errorf("Failed with error %v", err)
+		}
+
+		log.Printf("Active announce: %s", r.Destination.Prefix)
+
+		announces = append(announces, r.Destination.Prefix)
+	}
+
+	return announces, nil
 }
 
 // Loads all networks for country with specific ISO code
