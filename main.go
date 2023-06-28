@@ -72,27 +72,38 @@ func main() {
 
 	log.Printf("GeoIP database has correct format")
 
-	// We use Tuvalu for testing as they have very small number of prefixes
-	country_prefix_list, err := load_all_ipv4_networks_for_country(geoip_country_maxmind_db, "TV")
-
-	if err != nil {
-		log.Fatalf("Cannot load prefixes for country: %v", err)
-	}
-
 	// https://pkg.go.dev/go4.org/netipx#IPSetBuilder
 	// https://tailscale.com/blog/netaddr-new-ip-type-for-go/
 	var b netipx.IPSetBuilder
 
-	for _, prefix := range country_prefix_list {
-		log.Printf("%s\n", prefix.String())
+	log.Printf("We have %d countries in country block list", len(conf.CountryBlockList))
 
-		b.AddPrefix(prefix)
+	for _, country_code := range conf.CountryBlockList {
+		log.Printf("Loading prefixes for country code: %s", country_code)
+
+		country_prefix_list, err := load_all_ipv4_networks_for_country(geoip_country_maxmind_db, country_code)
+
+		if err != nil {
+			log.Printf("Cannot load prefixes for country: %v", err)
+			continue
+		}
+
+		log.Printf("Successfully loaded %d prefixes which belong to this country", len(country_prefix_list))
+
+		for _, prefix := range country_prefix_list {
+			log.Printf("Prefix %s\n", prefix.String())
+
+			b.AddPrefix(prefix)
+		}
+
 	}
 
 	log.Printf("We have %d entries in allow list", len(conf.IPAllowList))
 
 	// Exclude:
 	for _, allow_ip := range conf.IPAllowList {
+		log.Printf(allow_ip)
+
 		addr, err := netip.ParseAddr(allow_ip)
 
 		if err != nil {
@@ -105,10 +116,16 @@ func main() {
 	}
 
 	s, _ := b.IPSet()
-	fmt.Println(s.Ranges())
-	fmt.Println(s.Prefixes())
+
+	//fmt.Println(s.Ranges())
 
 	prefixes_to_block := s.Prefixes()
+
+	log.Printf("%d prefixes ready to announce", len(s.Prefixes()))
+
+	for _, prefix := range prefixes_to_block {
+		log.Printf("%s", prefix)
+	}
 
 	var opts []grpc.DialOption
 
@@ -269,7 +286,7 @@ func load_all_ipv4_networks_for_country(geoip_country_maxmind_db *maxminddb.Read
 		return nil, fmt.Errorf("Cannot correctly iterate over all available networks %w", networks.Err())
 	}
 
-	log.Printf("Successfully loaded %d prefixes for country %s", len(prefix_list), country_iso_code)
+	// log.Printf("Successfully loaded %d prefixes for country %s", len(prefix_list), country_iso_code)
 
 	return prefix_list, nil
 }
