@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/netip"
+	"strconv"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -21,11 +24,12 @@ import (
 )
 
 type CountryLockdownConfiguration struct {
-	GeoIPPath        string   `json:"geoip_path"`
-	GoBGPApiAddress  string   `json:"gobgp_api_host"`
-	CountryBlockList []string `json:"country_block_list"`
-	IPAllowList      []string `json:"ip_allow_list"`
-	BGPIPv4NextHop   string   `json:"bgp_ipv4_next_hop"`
+	GeoIPPath          string   `json:"geoip_path"`
+	GoBGPApiAddress    string   `json:"gobgp_api_host"`
+	CountryBlockList   []string `json:"country_block_list"`
+	IPAllowList        []string `json:"ip_allow_list"`
+	BGPIPv4NextHop     string   `json:"bgp_ipv4_next_hop"`
+	BGPIPv6Communities []string `json:"bgp_ipv4_communities"`
 }
 
 var conf CountryLockdownConfiguration
@@ -207,16 +211,63 @@ func announce_prefix(gobgp_client apipb.GobgpApiClient, prefix netip.Prefix, nex
 		return fmt.Errorf("Cannot create next hop message: %v", err)
 	}
 
-	// GoBGP will show them as {Communities: 0:100, 0:200}
-	community_attribute, err := apb.New(&apipb.CommunitiesAttribute{
-		Communities: []uint32{100, 200},
-	})
+	// Create BGP attributes array
+	attrs := []*apb.Any{origin_attr, next_hop_attr}
 
-	if err != nil {
-		return fmt.Errorf("Cannot create community message: %v", err)
+	log.Printf("We have %d communities in configuration", len(conf.BGPIPv6Communities))
+
+	var communities_as_32bit_uints []uint32
+
+	for _, bgp_community_as_string := range conf.BGPIPv6Communities {
+		// We expect them in format of two uint16 separated by colon
+
+		splitted_community := strings.Split(bgp_community_as_string, ":")
+
+		if len(splitted_community) != 2 {
+			log.Printf("Cannot parse community %s", bgp_community_as_string)
+			continue
+		}
+
+		first, err := strconv.ParseUint(splitted_community[0], 10, 16)
+
+		if err != nil {
+			log.Printf("Cannot parse %d as 16 bit integer", splitted_community[0])
+			continue
+		}
+
+		second, err := strconv.ParseUint(splitted_community[1], 10, 16)
+
+		if err != nil {
+			log.Printf("Cannot parse %d as 16 bit integer", splitted_community[1])
+			continue
+		}
+
+		// Encode two 2 byte integers into single 4 byte integer
+		b := make([]byte, 4)
+
+		// Well, I just found out that we need to use them in reverse order during testing
+		binary.LittleEndian.PutUint16(b[0:], uint16(second))
+		binary.LittleEndian.PutUint16(b[2:], uint16(first))
+
+		community_as_uint32 := binary.LittleEndian.Uint32(b[:])
+
+		log.Printf("Community as 32 bit integer: %d", community_as_uint32)
+
+		communities_as_32bit_uints = append(communities_as_32bit_uints, community_as_uint32)
 	}
 
-	attrs := []*apb.Any{origin_attr, next_hop_attr, community_attribute}
+	if len(communities_as_32bit_uints) > 0 {
+
+		community_attribute, err := apb.New(&apipb.CommunitiesAttribute{
+			Communities: communities_as_32bit_uints,
+		})
+
+		if err != nil {
+			return fmt.Errorf("Cannot create community message: %v", err)
+		}
+
+		attrs = append(attrs, community_attribute)
+	}
 
 	add_path_request := &apipb.AddPathRequest{
 		Path: &apipb.Path{
