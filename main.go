@@ -165,8 +165,32 @@ func main() {
 
 	gobgp_client := apipb.NewGobgpApiClient(conn)
 
+	log.Printf("Load all active announces")
+	active_announces, err := get_all_announced_prefixes(gobgp_client)
+
+	if err != nil {
+		log.Fatalf("Cannot load announces: %s", err)
+	}
+
+	log.Printf("Active announces: %s", active_announces)
+
+	// Create lookup map for active announces
+	active_announces_map := make(map[string]bool)
+
+	for _, prefix := range active_announces {
+		active_announces_map[prefix] = true
+	}
+
 	for _, prefix := range prefixes_to_block {
 		log.Printf("Prepare to announce %s", prefix)
+
+		// Do not announce already active active announces
+		_, ok := active_announces_map[prefix.String()]
+
+		if ok {
+			log.Printf("Skip announce for prefix as it's active")
+			continue
+		}
 
 		withdraw := false
 
@@ -180,13 +204,6 @@ func main() {
 		log.Printf("Successfully announced %s", prefix)
 	}
 
-	active_announces, err := get_all_announced_prefixes(gobgp_client)
-
-	if err != nil {
-		log.Fatalf("Cannot load announces: %s", err)
-	}
-
-	log.Printf("Active announces: %s", active_announces)
 }
 
 // Announce prefix
