@@ -184,10 +184,35 @@ func main() {
 	for _, active_prefix := range active_announces {
 		_, ok := prefixes_to_block_map[active_prefix]
 
-		if !ok {
-			log.Printf("We have to withdraw prefix %s", active_prefix)
+		if ok {
+			continue
 		}
+
+		// This prefix is not in block list and we have to withdraw it
+
+		log.Printf("We have to withdraw prefix %s", active_prefix)
+
+		withdraw_prefix, err := netip.ParsePrefix(active_prefix)
+
+		if err != nil {
+			log.Printf("Cannot parse %s as prefix with error %v", active_prefix, err)
+			// Well, we accept some malformed prefixes and do not return error in this case
+			continue
+		}
+
+		// Withdraw
+		withdraw := true
+
+		err = announce_prefix(gobgp_client, withdraw_prefix, next_hop, withdraw)
+
+		if err != nil {
+			log.Printf("Cannot withdraw prefix %s: %v", withdraw_prefix, err)
+			continue
+		}
+
 	}
+
+	log.Printf("Finished withdrawal process")
 
 	// Create lookup map for active announces
 	active_announces_map := make(map[string]bool)
@@ -242,7 +267,11 @@ func announce_prefix(gobgp_client apipb.GobgpApiClient, prefix netip.Prefix, nex
 	})
 
 	// To check that we announce correct thing
-	log.Printf("Announce %s/%d", prefix.Addr().String(), uint32(prefix.Bits()))
+	if withdraw {
+		log.Printf("Withdraw %s/%d", prefix.Addr().String(), uint32(prefix.Bits()))
+	} else {
+		log.Printf("Announce %s/%d", prefix.Addr().String(), uint32(prefix.Bits()))
+	}
 
 	if err != nil {
 		return fmt.Errorf("Cannot create prefix message: %v", err)
