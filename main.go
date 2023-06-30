@@ -180,7 +180,7 @@ func main() {
 		log.Printf("Successfully announced %s", prefix)
 	}
 
-	active_announces, err := get_all_annoucned_prefixes(gobgp_client)
+	active_announces, err := get_all_announced_prefixes(gobgp_client)
 
 	if err != nil {
 		log.Fatalf("Cannot load announces: %s", err)
@@ -298,7 +298,7 @@ func announce_prefix(gobgp_client apipb.GobgpApiClient, prefix netip.Prefix, nex
 }
 
 // Returns all active announces
-func get_all_annoucned_prefixes(gobgp_client apipb.GobgpApiClient) ([]string, error) {
+func get_all_announced_prefixes(gobgp_client apipb.GobgpApiClient) ([]string, error) {
 
 	ipv4_unicast := &apipb.Family{
 		Afi:  apipb.Family_AFI_IP,
@@ -327,7 +327,7 @@ func get_all_annoucned_prefixes(gobgp_client apipb.GobgpApiClient) ([]string, er
 			return nil, fmt.Errorf("Failed with error %v", err)
 		}
 
-		log.Printf("Active announce: %s", r.Destination.Prefix)
+		// log.Printf("Active announce: %s", r.Destination.Prefix)
 
 		announces = append(announces, r.Destination.Prefix)
 	}
