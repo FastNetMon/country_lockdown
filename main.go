@@ -122,6 +122,8 @@ func main() {
 
 	log.Printf("We have %d entries in allow list", len(conf.IPAllowList))
 
+	log.Printf("We have %d communities in configuration", len(conf.BGPIPv6Communities))
+
 	// Exclude:
 	for _, allow_ip := range conf.IPAllowList {
 		log.Printf(allow_ip)
@@ -240,8 +242,6 @@ func announce_prefix(gobgp_client apipb.GobgpApiClient, prefix netip.Prefix, nex
 	// Create BGP attributes array
 	attrs := []*apb.Any{origin_attr, next_hop_attr}
 
-	log.Printf("We have %d communities in configuration", len(conf.BGPIPv6Communities))
-
 	var communities_as_32bit_uints []uint32
 
 	for _, bgp_community_as_string := range conf.BGPIPv6Communities {
@@ -277,7 +277,7 @@ func announce_prefix(gobgp_client apipb.GobgpApiClient, prefix netip.Prefix, nex
 
 		community_as_uint32 := binary.LittleEndian.Uint32(b[:])
 
-		log.Printf("Community as 32 bit integer: %d", community_as_uint32)
+		//log.Printf("Community as 32 bit integer: %d", community_as_uint32)
 
 		communities_as_32bit_uints = append(communities_as_32bit_uints, community_as_uint32)
 	}
@@ -306,10 +306,8 @@ func announce_prefix(gobgp_client apipb.GobgpApiClient, prefix netip.Prefix, nex
 	_, err = gobgp_client.AddPath(context.Background(), add_path_request)
 
 	if err != nil {
-		return fmt.Errorf("Cannot add path: %w", err)
+		return fmt.Errorf("Cannot announce prefix: %w", err)
 	}
-
-	log.Printf("Successfully announced prefix")
 
 	return nil
 }
