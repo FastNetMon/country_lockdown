@@ -112,9 +112,9 @@ func main() {
 
 		log.Printf("Successfully loaded %d prefixes which belong to this country", len(country_prefix_list))
 
-		for _, prefix := range country_prefix_list {
-			log.Printf("Prefix %s\n", prefix.String())
+		log.Printf("Country prefixes: %v", country_prefix_list)
 
+		for _, prefix := range country_prefix_list {
 			b.AddPrefix(prefix)
 		}
 
@@ -122,12 +122,12 @@ func main() {
 
 	log.Printf("We have %d entries in allow list", len(conf.IPAllowList))
 
+	log.Printf("Allow list: %v", conf.IPAllowList)
+
 	log.Printf("We have %d communities in configuration", len(conf.BGPIPv6Communities))
 
 	// Exclude:
 	for _, allow_ip := range conf.IPAllowList {
-		log.Printf(allow_ip)
-
 		addr, err := netip.ParseAddr(allow_ip)
 
 		if err != nil {
@@ -145,11 +145,9 @@ func main() {
 
 	prefixes_to_block := s.Prefixes()
 
-	log.Printf("%d prefixes ready to announce", len(s.Prefixes()))
+	log.Printf("%d prefixes to block", len(s.Prefixes()))
 
-	for _, prefix := range prefixes_to_block {
-		log.Printf("%s", prefix)
-	}
+	log.Printf("Prefixes to block %v", prefixes_to_block)
 
 	var opts []grpc.DialOption
 
@@ -176,6 +174,21 @@ func main() {
 
 	log.Printf("Active announces: %s", active_announces)
 
+	prefixes_to_block_map := make(map[string]bool)
+
+	for _, prefix := range prefixes_to_block {
+		prefixes_to_block_map[prefix.String()] = true
+	}
+
+	// Find announces we have to withdraw
+	for _, active_prefix := range active_announces {
+		_, ok := prefixes_to_block_map[active_prefix]
+
+		if !ok {
+			log.Printf("We have to withdraw prefix %s", active_prefix)
+		}
+	}
+
 	// Create lookup map for active announces
 	active_announces_map := make(map[string]bool)
 
@@ -183,17 +196,30 @@ func main() {
 		active_announces_map[prefix] = true
 	}
 
-	for _, prefix := range prefixes_to_block {
-		log.Printf("Prepare to announce %s", prefix)
+	// Prefixes to announce
+	prefixes_to_announce := []netip.Prefix{}
 
+	// Skipped prefixes, we use it for fancy logging
+	skipped_prefixes := []string{}
+
+	// Filter out already active announces
+	for _, prefix := range prefixes_to_block {
 		// Do not announce already active active announces
 		_, ok := active_announces_map[prefix.String()]
 
 		if ok {
-			log.Printf("Skip announce for prefix as it's active")
+			skipped_prefixes = append(skipped_prefixes, prefix.String())
 			continue
 		}
 
+		prefixes_to_announce = append(prefixes_to_announce, prefix)
+	}
+
+	log.Printf("Skipped following prefixes as already active %v", skipped_prefixes)
+
+	log.Printf("Prepare to announce prefixes %v", prefixes_to_announce)
+
+	for _, prefix := range prefixes_to_announce {
 		withdraw := false
 
 		err = announce_prefix(gobgp_client, prefix, next_hop, withdraw)
@@ -202,10 +228,9 @@ func main() {
 			log.Printf("Cannot announce prefix %s: %v", prefix, err)
 			continue
 		}
-
-		log.Printf("Successfully announced %s", prefix)
 	}
 
+	log.Printf("Success")
 }
 
 // Announce prefix
