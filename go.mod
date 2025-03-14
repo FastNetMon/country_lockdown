@@ -2,17 +2,19 @@ module bitbucket.org/fastnetmon/country_lockdown
 
 go 1.20
 
-require github.com/oschwald/geoip2-golang v1.8.0
+require (
+	github.com/oschwald/geoip2-golang v1.8.0
+	github.com/oschwald/maxminddb-golang v1.10.0
+	github.com/osrg/gobgp/v3 v3.14.0
+	go4.org/netipx v0.0.0-20230303233057-f1b76eb4bb35
+	google.golang.org/grpc v1.55.0
+	google.golang.org/protobuf v1.30.0
+)
 
 require (
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
-	github.com/osrg/gobgp/v3 v3.14.0 // indirect
-	go4.org/netipx v0.0.0-20230303233057-f1b76eb4bb35 // indirect
-	golang.org/x/net v0.8.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/genproto v0.0.0-20230320184635-7606e756e683 // indirect
-	google.golang.org/grpc v1.55.0 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
 )
