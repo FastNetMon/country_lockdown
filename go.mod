@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/oschwald/geoip2-golang v1.8.0
 	github.com/oschwald/maxminddb-golang v1.10.0
-	github.com/osrg/gobgp/v3 v3.14.0
+	github.com/osrg/gobgp/v3 v3.35.0
 	go4.org/netipx v0.0.0-20230303233057-f1b76eb4bb35
 	google.golang.org/grpc v1.56.3
 	google.golang.org/protobuf v1.33.0

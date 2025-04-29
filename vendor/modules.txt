@@ -12,8 +12,8 @@ github.com/oschwald/geoip2-golang
 # github.com/oschwald/maxminddb-golang v1.10.0
 ## explicit; go 1.18
 github.com/oschwald/maxminddb-golang
-# github.com/osrg/gobgp/v3 v3.14.0
-## explicit; go 1.20
+# github.com/osrg/gobgp/v3 v3.35.0
+## explicit; go 1.22
 github.com/osrg/gobgp/v3/api
 # go4.org/netipx v0.0.0-20230303233057-f1b76eb4bb35
 ## explicit; go 1.18
