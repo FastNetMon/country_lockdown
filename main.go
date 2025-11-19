@@ -72,8 +72,8 @@ func main() {
 	log.Printf("Loaded GeoIP file: %+v", geoip_country_maxmind_db.Metadata)
 
 	// We need to be sure that database has correct type
-	if geoip_country_maxmind_db.Metadata.DatabaseType != "GeoIP2-Country" {
-		log.Fatalf("Wrong type of GeoIP database %s, please GeoIP2-Country type", geoip_country_maxmind_db.Metadata.DatabaseType)
+	if geoip_country_maxmind_db.Metadata.DatabaseType != "GeoIP2-Country" && geoip_country_maxmind_db.Metadata.DatabaseType != "GeoLite2-Country"{
+		log.Fatalf("Wrong type of GeoIP database %s, please GeoIP2-Country or GeoLite2-Country type", geoip_country_maxmind_db.Metadata.DatabaseType)
 	}
 
 	log.Printf("GeoIP database has correct format")
