@@ -8,8 +8,6 @@ platform: "linux"
 version: "v1.0.0"
 section: "default"
 priority: "extra"
-replaces:
-- foobar
 provides:
 - country_lockdown
 maintainer: "FastNetMon Engineering <sales@fastnetmon.com>"
