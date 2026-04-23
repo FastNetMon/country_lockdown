@@ -13,7 +13,7 @@ provides:
 maintainer: "FastNetMon Engineering <sales@fastnetmon.com>"
 description: "Country Lockdown is a tool to manage country wide block lists from GeoIP database"
 vendor: "FastNetMon LTD"
-homepage: "http://fastnetmon.com"
+homepage: "https://fastnetmon.com"
 license: "Commercial"
 changelog: "changelog.yaml"
 contents:
