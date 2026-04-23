@@ -6,6 +6,8 @@ on:
       - master
       - main
   pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
 
 env:
@@ -50,6 +52,10 @@ jobs:
         run: |
           cp nfpm.yaml "${RUNNER_TEMP}/nfpm.yaml"
           sed -i -E 's/^arch:[[:space:]]*".*"/arch: "${{ matrix.arch }}"/' "${RUNNER_TEMP}/nfpm.yaml"
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            sed -i -E "s/^version:[[:space:]]*\".*\"/version: \"${VERSION}\"/" "${RUNNER_TEMP}/nfpm.yaml"
+          fi
           ~/go/bin/nfpm pkg --config "${RUNNER_TEMP}/nfpm.yaml" --packager deb --target dist/
           ~/go/bin/nfpm pkg --config "${RUNNER_TEMP}/nfpm.yaml" --packager rpm --target dist/
 
@@ -59,3 +65,26 @@ jobs:
           name: country-lockdown-packages-${{ matrix.arch }}
           path: dist/*
           if-no-files-found: error
+
+  upload-release-assets:
+    if: github.event_name == 'release'
+    needs: build-packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Upload assets to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for file in dist/*.deb dist/*.rpm; do
+            echo "Uploading ${file}..."
+            gh release upload "${{ github.event.release.tag_name }}" "$file" --clobber
+          done
