@@ -11,12 +11,16 @@ on:
 jobs:
   build-packages:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
-        arch:
-          - amd64
-          - arm64
+        include:
+          - arch: amd64
+            nfpm_config: nfpm.yaml
+          - arch: arm64
+            nfpm_config: nfpm.arm64.yaml
 
     steps:
       - name: Checkout
@@ -42,9 +46,8 @@ jobs:
 
       - name: Build deb/rpm packages
         run: |
-          sed 's/^arch: ".*"/arch: "${{ matrix.arch }}"/' nfpm.yaml > /tmp/nfpm.yaml
-          ~/go/bin/nfpm pkg --config /tmp/nfpm.yaml --packager deb --target dist/
-          ~/go/bin/nfpm pkg --config /tmp/nfpm.yaml --packager rpm --target dist/
+          ~/go/bin/nfpm pkg --config ${{ matrix.nfpm_config }} --packager deb --target dist/
+          ~/go/bin/nfpm pkg --config ${{ matrix.nfpm_config }} --packager rpm --target dist/
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4
