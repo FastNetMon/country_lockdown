@@ -1,0 +1,54 @@
+name: Build binary packages
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-packages:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - amd64
+          - arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build country_lockdown binary
+        run: |
+          mkdir -p bin dist
+          CGO_ENABLED=0 GOOS=linux GOARCH=${{ matrix.arch }} go build -mod=vendor -o bin/country_lockdown .
+
+      - name: Download gobgp tools
+        run: |
+          wget -q "https://github.com/osrg/gobgp/releases/download/v3.14.0/gobgp_3.14.0_linux_${{ matrix.arch }}.tar.gz" -O /tmp/gobgp.tar.gz
+          tar -xf /tmp/gobgp.tar.gz -C bin/
+
+      - name: Install nfpm
+        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.42.0
+
+      - name: Build deb/rpm packages
+        run: |
+          sed 's/^arch: ".*"/arch: "${{ matrix.arch }}"/' nfpm.yaml > /tmp/nfpm.yaml
+          ~/go/bin/nfpm pkg --config /tmp/nfpm.yaml --packager deb --target dist/
+          ~/go/bin/nfpm pkg --config /tmp/nfpm.yaml --packager rpm --target dist/
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: country-lockdown-packages-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
