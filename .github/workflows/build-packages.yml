@@ -8,6 +8,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  GOBGP_VERSION: 3.14.0
+
 jobs:
   build-packages:
     runs-on: ubuntu-latest
@@ -17,11 +20,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - arch: amd64
-            nfpm_config: nfpm.yaml
-          - arch: arm64
-            nfpm_config: nfpm.arm64.yaml
+        arch:
+          - amd64
+          - arm64
 
     steps:
       - name: Checkout
@@ -39,7 +40,7 @@ jobs:
 
       - name: Download gobgp tools
         run: |
-          wget -q "https://github.com/osrg/gobgp/releases/download/v3.14.0/gobgp_3.14.0_linux_${{ matrix.arch }}.tar.gz" -O /tmp/gobgp.tar.gz
+          wget "https://github.com/osrg/gobgp/releases/download/v${GOBGP_VERSION}/gobgp_${GOBGP_VERSION}_linux_${{ matrix.arch }}.tar.gz" -O /tmp/gobgp.tar.gz
           tar -xf /tmp/gobgp.tar.gz -C bin/
 
       - name: Install nfpm
@@ -47,8 +48,9 @@ jobs:
 
       - name: Build deb/rpm packages
         run: |
-          ~/go/bin/nfpm pkg --config ${{ matrix.nfpm_config }} --packager deb --target dist/
-          ~/go/bin/nfpm pkg --config ${{ matrix.nfpm_config }} --packager rpm --target dist/
+          ruby -ryaml -e 'cfg = YAML.load_file("nfpm.yaml"); cfg["arch"] = "${{ matrix.arch }}"; File.write("/tmp/nfpm.yaml", cfg.to_yaml)'
+          ~/go/bin/nfpm pkg --config /tmp/nfpm.yaml --packager deb --target dist/
+          ~/go/bin/nfpm pkg --config /tmp/nfpm.yaml --packager rpm --target dist/
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4
