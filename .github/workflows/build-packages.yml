@@ -48,9 +48,10 @@ jobs:
 
       - name: Build deb/rpm packages
         run: |
-          ruby -ryaml -e 'cfg = YAML.load_file("nfpm.yaml"); cfg["arch"] = "${{ matrix.arch }}"; File.write("/tmp/nfpm.yaml", cfg.to_yaml)'
-          ~/go/bin/nfpm pkg --config /tmp/nfpm.yaml --packager deb --target dist/
-          ~/go/bin/nfpm pkg --config /tmp/nfpm.yaml --packager rpm --target dist/
+          cp nfpm.yaml "${RUNNER_TEMP}/nfpm.yaml"
+          sed -i -E 's/^arch:[[:space:]]*".*"/arch: "${{ matrix.arch }}"/' "${RUNNER_TEMP}/nfpm.yaml"
+          ~/go/bin/nfpm pkg --config "${RUNNER_TEMP}/nfpm.yaml" --packager deb --target dist/
+          ~/go/bin/nfpm pkg --config "${RUNNER_TEMP}/nfpm.yaml" --packager rpm --target dist/
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4
