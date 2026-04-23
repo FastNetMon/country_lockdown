@@ -12,6 +12,7 @@ jobs:
   build-packages:
     runs-on: ubuntu-latest
     permissions:
+      actions: write
       contents: read
     strategy:
       fail-fast: false
